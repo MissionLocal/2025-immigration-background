@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Events Map</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="cont">
+    <div class="map-container">
+      <div id="map" class="map"></div>
+      <div id="legend" class="legend"></div>
+      <div id="info-box" class="info-box"></div>
+    </div>
+  </div>
+
+  <div id="last-updated" style="text-align:center; font-family:'Barlow', sans-serif; font-size:0.9em; color:#555;">
+    Map: Kelly Waldron. Source: U.S. Census Bureau.
+  </div>
+
+  <script src="https://pym.nprapps.org/pym.v1.min.js"></script>
+  <script src="map.js"></script>
+</body>
+</html>

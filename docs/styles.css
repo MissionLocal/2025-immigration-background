@@ -1,0 +1,42 @@
+/* ===== Base ===== */
+body{margin:0;padding:0 0 2px 0;font-family:'Barlow',sans-serif}
+
+/* ===== Layout ===== */
+.cont{display:flex;justify-content:center;align-items:center}
+.map-container{position:relative;width:100vw;max-width:400px;margin:10px auto}
+.map{width:100vw;max-width:400px;height:500px;margin:0;box-shadow:0 4px 8px rgba(0,0,0,.1)}
+
+/* Hide old choropleth legend by default (keep structure in case you want text later) */
+.legend{display:none}
+
+/* Info box (centered near bottom) */
+.info-box{
+  position:absolute;left:50%;transform:translateX(-50%);bottom:14px;z-index:2;
+  width:calc(100% - 12px);max-width:460px;box-sizing:border-box;
+  padding:8px 10px;background:rgba(255,255,255,.98);border-radius:2px;
+  box-shadow:0 2px 4px rgba(0,0,0,.1);font-size:13px;line-height:1.35;
+  max-height:40%;overflow-y:auto;font-family:'Barlow',sans-serif;display:none;
+}
+.info-title-row{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.info-title-row .event{font-weight:600}
+.info-title-row .when{color:#00000;font-size:12.5px}
+.info-desc{margin-top:4px}
+
+/* Mobile keeps same size as desktop */
+@media (max-width:768px){
+  .map-container{max-width:400px}
+  .map{height:500px}
+}
+
+/* Desktop: bump map width cap to 500px */
+@media (min-width: 769px) {
+  .map-container { max-width: 500px; }
+  .map { max-width: 500px; }
+}
+
+/* Info-box: keep one uniform font size everywhere */
+.info-box { font-size: 13px; }
+.info-title-row .event { font-weight: 600; font-size: inherit; }
+.info-title-row .when { font-size: inherit; }
+.info-desc { font-size: inherit; }
+
