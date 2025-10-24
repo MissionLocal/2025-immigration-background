@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     return `
     <div class="info-title-row">
-      <div class="event"><strong>${tract}</strong></div>
+      <div class="event">Tract: <strong>${tract}</strong></div>
       <div class="when">${headlineRight}</div>
     </div>
     <div class="info-desc">

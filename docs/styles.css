@@ -19,7 +19,7 @@ body{margin:0;padding:0 0 2px 0;font-family:'Barlow',sans-serif}
 }
 .info-title-row{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .info-title-row .event{font-weight:600}
-.info-title-row .when{color:#00000;font-size:12.5px}
+.info-title-row .when{color:#000000;font-size:12.5px}
 .info-desc{margin-top:4px}
 
 /* Mobile keeps same size as desktop */
