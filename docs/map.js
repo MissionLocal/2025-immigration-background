@@ -170,7 +170,7 @@ function buildLegend(el, breaks, colors, headingText = '') {
   const BIN_BREAKS = USE_FIXED_BINS ? FIXED_BREAKS : quantileBreaks;
 
   // Color ramp (light → dark). Adjust if you want different hues.
-  const COLORS = ['#f1eef6', '#bdc9e1', '#74a9cf', '#2b8cbe', '#045a8d'];
+  const COLORS = ["#FFBFF3","#FF9AEE","#F67CF6","#E95AD7","#C83AB8"];
 
   // Expression helper to get the value on the same display scale used for breaks
   const FB_EXPR = dataIsFraction
@@ -184,7 +184,7 @@ function buildLegend(el, breaks, colors, headingText = '') {
     BIN_BREAKS[0], COLORS[1],
     BIN_BREAKS[1], COLORS[2],
     BIN_BREAKS[2], COLORS[3],
-    BIN_BREAKS[3], COLORS[4]
+    BIN_BREAKS[3], COLORS[4]screenTop
   ];
 
   // ======================= Map layers =======================
