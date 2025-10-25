@@ -35,11 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const NNAT_FIELD  = "pct_foreign_born_not_naturalized";
   const COUNT_FIELD = "foreign_born";
 
-  // 4 breaks → 5 colors
-  const BIN_BREAKS = [10, 20, 30, 40];
+  // --- BREAKS & COLORS ---
+  // Added a new break at 50 so that 40–50 and ≥50 are distinct buckets.
+  const BIN_BREAKS = [10, 20, 30, 40, 50]; // ← now 5 breaks → 6 bins
 
-  // Lighter pink ramp (light → dark)
-  const COLORS = ["#FFF1FA", "#FFD9F6", "#FFBFF3", "#FF9AEE", "#F67CF6"];
+  // Lighter pink ramp (light → dark) — added one deeper shade at the end
+  const COLORS = ["#FFF1FA", "#FFD9F6", "#FFBFF3", "#FF9AEE", "#F67CF6", "#E95AD7"];
 
   // ======================= Helpers =======================
   const key  = v => (v == null ? '' : String(v).trim());
@@ -49,19 +50,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const fmtInt = v => (v == null || Number.isNaN(Number(v)) ? '—' : Number(v).toLocaleString('en-US'));
   const fmtWholeOr1 = v => (v == null ? '—' : `${v.toFixed(Math.abs(v) < 10 ? 1 : 0)}%`);
 
-  function buildLegend(el, breaks, colors,headingText='') {
+  function buildLegend(el, breaks, colors, headingText='') {
     if (!el) return;
-    const [b0, b1, b2, b3] = breaks.map(v => Number.isFinite(v) ? v : null);
-    const labels = [
-      `≤ ${fmtWholeOr1(b0)}`,
-      `${fmtWholeOr1(b0)} – ${fmtWholeOr1(b1)}`,
-      `${fmtWholeOr1(b1)} – ${fmtWholeOr1(b2)}`,
-      `${fmtWholeOr1(b2)} – ${fmtWholeOr1(b3)}`,
-      `≥ ${fmtWholeOr1(b3)}`
-    ];
+
+    // Build labels from an arbitrary number of breaks (N) → N+1 labels
+    const labels = [];
+    for (let i = 0; i <= breaks.length; i++) {
+      if (i === 0) {
+        labels.push(`≤ ${fmtWholeOr1(breaks[0])}`);
+      } else if (i === breaks.length) {
+        labels.push(`≥ ${fmtWholeOr1(breaks[breaks.length - 1])}`);
+      } else {
+        labels.push(`${fmtWholeOr1(breaks[i - 1])} – ${fmtWholeOr1(breaks[i])}`);
+      }
+    }
+
     el.innerHTML = `
       ${headingText ? `<div class="heading">${headingText}</div>` : ``}
-      <div class="title">% foreign-born</div>
+      <div class="title">Foreign-born</div>
       ${colors.map((c, i) => `
         <div class="row">
           <span class="swatch" style="background:${c}"></span>
@@ -69,6 +75,15 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `).join('')}
     `;
+  }
+
+  function buildStepColor(valueExpr, breaks, colors) {
+    // Mapbox 'step' expects: ['step', value, color0, break0, color1, break1, color2, ...]
+    const step = ['step', valueExpr, colors[0]];
+    for (let i = 0; i < breaks.length; i++) {
+      step.push(breaks[i], colors[i + 1]);
+    }
+    return step;
   }
 
   function tplInfo(p = {}) {
@@ -116,19 +131,13 @@ document.addEventListener('DOMContentLoaded', () => {
       promoteId: UID_FIELD
     });
 
-    // Color expression on display scale
+    // Value expression on display scale
     const FB_EXPR = DATA_IS_FRACTION
       ? ['*', ['to-number', ['coalesce', ['get', VALUE_FIELD], 0]], 100]
       : ['to-number', ['coalesce', ['get', VALUE_FIELD], 0]];
 
-    const colorExpr = [
-      'step', FB_EXPR,
-      COLORS[0],
-      BIN_BREAKS[0], COLORS[1],
-      BIN_BREAKS[1], COLORS[2],
-      BIN_BREAKS[2], COLORS[3],
-      BIN_BREAKS[3], COLORS[4]
-    ];
+    // Dynamic step expression (now supports the extra 50% break)
+    const colorExpr = buildStepColor(FB_EXPR, BIN_BREAKS, COLORS);
 
     // Fill
     map.addLayer({
@@ -205,8 +214,8 @@ document.addEventListener('DOMContentLoaded', () => {
       map.moveLayer('tracts-hover');
     } catch {}
 
-    // Legend
-    buildLegend(legendEl, BIN_BREAKS, COLORS);
+    // Legend (auto-builds from the breaks)
+    buildLegend(legendEl, BIN_BREAKS, COLORS); // no heading string
 
     // Pym sync (simple)
     Promise.all([

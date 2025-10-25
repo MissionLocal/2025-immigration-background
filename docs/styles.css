@@ -6,26 +6,83 @@ body{margin:0;padding:0 0 2px 0;font-family:'Barlow',sans-serif}
 .map-container{position:relative;width:100vw;max-width:400px;margin:10px auto}
 .map{width:100vw;max-width:400px;height:500px;margin:0;box-shadow:0 4px 8px rgba(0,0,0,.1)}
 
-.legend{
+/* ===== Left-aligned title at the top (less rounded) ===== */
+.map-container.with-map-title .map-title{
   position:absolute;
-  left:8px; 
-  top:8px;          /* moved from bottom to top */
-  bottom:auto;      /* ensure bottom is unset */
-  z-index:3;
-  background:rgba(255,255,255,.96);
-  border-radius:2px;
-  box-shadow:0 1px 3px rgba(0,0,0,.12);
-  padding:6px 8px;
-  font-size:12px;
-  line-height:1.2;
+  top:8px;
+  left:8px;                 /* left aligned */
+  transform:none;           /* no centering */
+  z-index:4;
+  background:#fff;
+  padding:8px 12px;
+  border-radius:2px;        /* less rounded */
+  box-shadow:0 2px 8px rgba(0,0,0,.12);
+  font-weight:700;
+  font-size:16px;
+  line-height:1;
+  white-space:nowrap;
+  pointer-events:none;      /* don’t block map interactions */
 }
-.legend .heading{ font-weight:600; margin-bottom:6px; font-size:13px; }
-.legend .title{ font-weight:600; margin:4px 0 4px; }
-.legend .row{ display:flex; align-items:center; gap:6px; margin:3px 0; }
-.legend .swatch{ width:14px; height:14px; border:1px solid #ccc; flex:0 0 14px; }
 
+/* ===== Legend (clean card, tighter spacing) ===== */
+.legend, #legend{
+  position:absolute;
+  left:8px;
+  top:8px;                  /* default when there is no map title */
+  z-index:3;
+  background:#fff;
+  border-radius:2px;
+  box-shadow:0 2px 8px rgba(0,0,0,.12);
+  padding:8px 10px;         /* tighter: was 12px 12px 10px 12px */
+  font-size:12px;
+  line-height:1.15;         /* slightly tighter line height */
+}
 
-/* Info box (centered near bottom) */
+/* If a title exists, nudge the legend down */
+.map-container.with-map-title .legend,
+.map-container.with-map-title #legend{ top:52px; }  /* was 56px */
+
+/* Scale label + rows (remove extra gaps) */
+.legend .title, #legend .title{
+  font-weight:600;
+  font-size:13px;
+  color:black;
+  margin:0 0 6px;           /* was 6px 0 8px */
+}
+.legend .row, #legend .row{
+  display:flex;align-items:center;gap:6px;margin:2px 0;  /* was 4px 0 */
+}
+.legend .row:first-child{ margin-top:0; }
+.legend .row:last-child{ margin-bottom:0; }
+.legend .swatch, #legend .swatch{
+  width:14px;height:14px;border-radius:2px;border:1px solid rgba(0,0,0,.12);flex:0 0 14px
+}
+
+/* If a title exists, nudge the legend down so they don't overlap */
+.map-container.with-map-title .legend,
+.map-container.with-map-title #legend{
+  top:56px;                 /* sits neatly under the title */
+}
+
+/* Hide any injected legend heading; we’re using the map title instead */
+.legend .heading, #legend .heading{ display:none; }
+
+/* Scale label inside the card */
+.legend .title, #legend .title{
+  font-weight:600;
+  font-size:13px;
+  color:#444;
+  margin:6px 0 8px;
+}
+
+/* Legend rows & swatches */
+.legend .row, #legend .row{display:flex;align-items:center;gap:6px;margin:4px 0}
+.legend .swatch, #legend .swatch{
+  width:14px;height:14px;border-radius:2px; /* less rounded swatch */
+  border:1px solid rgba(0,0,0,.12);flex:0 0 14px
+}
+
+/* ===== Info box (centered near bottom) ===== */
 .info-box{
   position:absolute;left:50%;transform:translateX(-50%);bottom:14px;z-index:2;
   width:calc(100% - 12px);max-width:460px;box-sizing:border-box;
@@ -38,21 +95,22 @@ body{margin:0;padding:0 0 2px 0;font-family:'Barlow',sans-serif}
 .info-title-row .when{color:#000000;font-size:12.5px}
 .info-desc{margin-top:4px}
 
-/* Mobile keeps same size as desktop */
+/* ===== Mobile keeps same size as desktop ===== */
 @media (max-width:768px){
   .map-container{max-width:400px}
   .map{height:500px}
+  .map-container.with-map-title .map-title{ font-size:15px; padding:7px 10px; }
+  .map-container.with-map-title .legend, .map-container.with-map-title #legend{ top:52px; }
 }
 
-/* Desktop: bump map width cap to 500px */
+/* ===== Desktop: bump map width cap to 500px ===== */
 @media (min-width: 769px) {
   .map-container { max-width: 500px; }
   .map { max-width: 500px; }
 }
 
-/* Info-box: keep one uniform font size everywhere */
+/* ===== Info-box: uniform font size ===== */
 .info-box { font-size: 13px; }
 .info-title-row .event { font-weight: 600; font-size: inherit; }
 .info-title-row .when { font-size: inherit; }
 .info-desc { font-size: inherit; }
-
