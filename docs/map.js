@@ -1,19 +1,17 @@
-// map.js — Tracts choropleth (mapdata.geojson) with legend + click-to-open info card
-document.addEventListener('DOMContentLoaded', async () => {
-  // Pym: create if available; otherwise stay null
+// map.js — Tracts choropleth via Mapbox vector tileset (mlnow.6yvrkqc4 / mapdata)
+document.addEventListener('DOMContentLoaded', () => {
+  // Optional Pym
   let pymChild = null;
   try { if (window.pym) pymChild = new pym.Child(); } catch {}
 
-  mapboxgl.accessToken = "pk.eyJ1IjoibWxub3ciLCJhIjoiY21oM21rM2RmMDg3bjJpcHg0MzRwa2NpZyJ9.drZktAF4o0TiL48lqEvD8g";
+  mapboxgl.accessToken = "pk.eyJ1IjoibWxub3ciLCJhIjoiY21ncjMxM2QwMnhjajJvb3ZobnllcDdmOSJ9.dskkEmEIuRIhKPkTh5o_Iw";
 
-  // DOM
+  // ---- DOM
   const infoBox  = document.getElementById('info-box');
   const legendEl = document.getElementById('legend');
-
-  // Make sure legend is visible even if CSS had display:none
   if (legendEl) legendEl.style.display = 'block';
 
-  // Map (same style + layout as your template)
+  // ---- Map
   const map = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/mlnow/cm2tndow500co01pw3fho5d21',
@@ -21,97 +19,85 @@ document.addEventListener('DOMContentLoaded', async () => {
     zoom: 9.5
   });
 
+  // ======================= CONFIG =======================
+  const TILESET_URL  = "mapbox://mlnow.2mf63gi6";
+  const SOURCE_LAYER = "mapdata";
+
+  // Use your single, consistent id field here:
+  const UID_FIELD = "GEOID"; // change to "TRACTCE" if that's your id
+
+  // If tiles store pct_foreign_born as 0–1, keep true; if 0–100, set false.
+  const DATA_IS_FRACTION = false;
+
+  // Field names (same as your GeoJSON)
+  const VALUE_FIELD = "pct_foreign_born";
+  const NAT_FIELD   = "pct_foreign_born_naturalized";
+  const NNAT_FIELD  = "pct_foreign_born_not_naturalized";
+  const COUNT_FIELD = "foreign_born";
+
+  // 4 breaks → 5 colors
+  const BIN_BREAKS = [10, 20, 30, 40];
+
+  // Lighter pink ramp (light → dark)
+  const COLORS = ["#FFF1FA", "#FFD9F6", "#FFBFF3", "#FF9AEE", "#F67CF6"];
+
   // ======================= Helpers =======================
   const key  = v => (v == null ? '' : String(v).trim());
   const safe = (p, k) => key(p?.[k]);
-
-  const getTractId = (p = {}) =>
-    safe(p, 'tract') ||
-    safe(p, 'TRACT') ||
-    safe(p, 'TRACTCE') ||
-    safe(p, 'NAME') ||
-    safe(p, 'GEOID') ||
-    safe(p, 'geoid') ||
-    'Unknown tract';
-
-  const num = v => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  };
-
-  const fmtPct = (v, digits = 1) => (v == null ? '—' : `${v.toFixed(digits)}%`);
+  const num  = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const fmtPct = (v, d = 1) => (v == null ? '—' : `${v.toFixed(d)}%`);
   const fmtInt = v => (v == null || Number.isNaN(Number(v)) ? '—' : Number(v).toLocaleString('en-US'));
+  const fmtWholeOr1 = v => (v == null ? '—' : `${v.toFixed(Math.abs(v) < 10 ? 1 : 0)}%`);
 
-  // Compute quantiles for a numeric array (p in [0,1])
-  function quantile(sorted, p) {
-    if (!sorted.length) return null;
-    const idx = (sorted.length - 1) * p;
-    const lo = Math.floor(idx), hi = Math.ceil(idx);
-    if (lo === hi) return sorted[lo];
-    const w = idx - lo;
-    return sorted[lo] * (1 - w) + sorted[hi] * w;
+  function buildLegend(el, breaks, colors,headingText='') {
+    if (!el) return;
+    const [b0, b1, b2, b3] = breaks.map(v => Number.isFinite(v) ? v : null);
+    const labels = [
+      `≤ ${fmtWholeOr1(b0)}`,
+      `${fmtWholeOr1(b0)} – ${fmtWholeOr1(b1)}`,
+      `${fmtWholeOr1(b1)} – ${fmtWholeOr1(b2)}`,
+      `${fmtWholeOr1(b2)} – ${fmtWholeOr1(b3)}`,
+      `≥ ${fmtWholeOr1(b3)}`
+    ];
+    el.innerHTML = `
+      ${headingText ? `<div class="heading">${headingText}</div>` : ``}
+      <div class="title">% foreign-born</div>
+      ${colors.map((c, i) => `
+        <div class="row">
+          <span class="swatch" style="background:${c}"></span>
+          <span>${labels[i]}</span>
+        </div>
+      `).join('')}
+    `;
   }
 
-  // Legend utils
-  const fmtWholeOr1 = (v) => {
-    if (v == null) return '—';
-    const digits = Math.abs(v) < 10 ? 1 : 0; // 1 decimal if <10%
-    return `${v.toFixed(digits)}%`;
-  };
+  function tplInfo(p = {}) {
+    const tract = safe(p, 'tract') || safe(p, 'TRACT') || safe(p, 'TRACTCE') ||
+                  safe(p, 'NAME')  || safe(p, 'GEOID') || safe(p, 'geoid') || "Unknown tract";
 
-// Replace your buildLegend with this version (adds heading arg)
-function buildLegend(el, breaks, colors, headingText = '') {
-  if (!el) return;
-  const [b0, b1, b2, b3] = breaks.map(v => Number.isFinite(v) ? v : null);
-  const labels = [
-    `≤ ${fmtWholeOr1(b0)}`,
-    `${fmtWholeOr1(b0)} – ${fmtWholeOr1(b1)}`,
-    `${fmtWholeOr1(b1)} – ${fmtWholeOr1(b2)}`,
-    `${fmtWholeOr1(b2)} – ${fmtWholeOr1(b3)}`,
-    `≥ ${fmtWholeOr1(b3)}`
-  ];
-  el.innerHTML = `
-    ${headingText ? `<div class="heading">${headingText}</div>` : ``}
-    <div class="title">% foreign-born</div>
-    ${colors.map((c, i) => `
-      <div class="row">
-        <span class="swatch" style="background:${c}"></span>
-        <span>${labels[i]}</span>
-      </div>
-    `).join('')}
-  `;
-}
+    const raw     = num(p[VALUE_FIELD]);
+    const natRaw  = num(p[NAT_FIELD]);
+    const nNatRaw = num(p[NNAT_FIELD]);
+    const count   = num(p[COUNT_FIELD]);
 
+    const fbDisp   = raw     == null ? null : (DATA_IS_FRACTION ? raw * 100 : raw);
+    const natDisp  = natRaw  == null ? null : (DATA_IS_FRACTION ? natRaw * 100 : natRaw);
+    const nNatDisp = nNatRaw == null ? null : (DATA_IS_FRACTION ? nNatRaw * 100 : nNatRaw);
 
-  // Info box template (tract bold; % + count on the right; naturalized lines below)
-  function tplInfo(p = {}, displayMult = 1) {
-    const tract  = getTractId(p);
-
-    const fbPct   = num(p.pct_foreign_born);
-    const natPct  = num(p.pct_foreign_born_naturalized);
-    const nNatPct = num(p.pct_foreign_born_not_naturalized);
-
-    const fbCount = num(p.foreign_born);
-
-    const fbDisp   = fbPct   == null ? null : fbPct   * displayMult;
-    const natDisp  = natPct  == null ? null : natPct  * displayMult;
-    const nNatDisp = nNatPct == null ? null : nNatPct * displayMult;
-
-    const headlineRight = `${fmtPct(fbDisp)} foreign born (${fmtInt(fbCount)})`;
+    const headlineRight = `${fmtPct(fbDisp)} foreign born ${count != null ? `(${fmtInt(count)})` : ""}`;
 
     return `
       <div class="info-title-row">
-        <div class="event">Census <strong>${tract}</strong></div>
+        <div class="event"><strong>${tract}</strong></div>
         <div class="when">${headlineRight}</div>
       </div>
       <div class="info-desc">
-        Naturalized: ${fmtPct(natDisp)}<br/>
-        Not naturalized: ${fmtPct(nNatDisp)}
+        ${NAT_FIELD ? `Naturalized: ${fmtPct(natDisp)}<br/>` : ``}
+        ${NNAT_FIELD ? `Not naturalized: ${fmtPct(nNatDisp)}` : ``}
       </div>
     `;
   }
 
-  // Info-box show/hide (keeps your template behavior)
   const showInfoBox = () => {
     infoBox.style.display = 'block';
     requestAnimationFrame(() => { try { pymChild?.sendHeight(); } catch {} });
@@ -121,117 +107,64 @@ function buildLegend(el, breaks, colors, headingText = '') {
     requestAnimationFrame(() => { try { pymChild?.sendHeight(); } catch {} });
   };
 
-  // Selection state
-  let selectedUID = null;
-  const clearSelection = () => {
-    selectedUID = null;
-    infoBox.innerHTML = '';
-    hideInfoBox();
-    try {
-      map.setFilter('tracts-hover', ['==', ['get', '__uid'], '']);
-    } catch {}
-  };
-
-  // ======================= Load data =======================
-  const DATA_URL = 'mapdata.geojson';
-  const gj = await fetch(DATA_URL).then(r => {
-    if (!r.ok) throw new Error(`Failed to load ${DATA_URL}`);
-    return r.json();
-  });
-
-  // Precompute: UID + collect values for quantiles, detect scale
-  const vals = [];
-  for (const f of (gj.features || [])) {
-    if (!f.properties) f.properties = {};
-    const uid = getTractId(f.properties);
-    f.properties.__uid = uid;
-    const v = num(f.properties.pct_foreign_born);
-    if (v != null) vals.push(v);
-  }
-
-  // If data are fractions 0–1, max will be <= ~1. We’ll display in 0–100 and color with the same.
-  const maxVal = vals.length ? Math.max(...vals) : 0;
-  const dataIsFraction = maxVal > 0 && maxVal <= 1.2;
-  const displayMult = dataIsFraction ? 100 : 1;
-
-  // Compute quantile breaks (display scale)
-  const sorted = vals.map(v => v * displayMult).sort((a, b) => a - b);
-  const quantileBreaks = sorted.length
-    ? [quantile(sorted, 0.2), quantile(sorted, 0.4), quantile(sorted, 0.6), quantile(sorted, 0.8)]
-    : [10, 20, 30, 40]; // fallback
-
-  // ========= Binning mode: fixed (recommended) or quantiles =========
-  const USE_FIXED_BINS = true; // set false to use quantiles
-
-  // Fixed bins (percent units)
-  const FIXED_BREAKS = [10, 20, 30, 40];
-
-  // Final breaks used for both coloring + legend
-  const BIN_BREAKS = USE_FIXED_BINS ? FIXED_BREAKS : quantileBreaks;
-
-  // Color ramp (light → dark). Adjust if you want different hues.
-  const COLORS = ["#FFF1FA","#FFD9F6","#F67CF6","#E95AD7","#C83AB8"];
-
-
-  // Expression helper to get the value on the same display scale used for breaks
-  const FB_EXPR = dataIsFraction
-    ? ['*', ['coalesce', ['get', 'pct_foreign_born'], 0], 100]
-    : ['coalesce', ['get', 'pct_foreign_born'], 0];
-
-  // Step expression: value < b1 → c0; < b2 → c1; ...
-  const colorExpr = [
-    'step', FB_EXPR,
-    COLORS[0],
-    BIN_BREAKS[0], COLORS[1],
-    BIN_BREAKS[1], COLORS[2],
-    BIN_BREAKS[2], COLORS[3],
-    BIN_BREAKS[3], COLORS[4]
-  ];
-
   // ======================= Map layers =======================
   map.on('load', () => {
-    map.addSource('tracts', { type: 'geojson', data: gj });
+    // Vector source (promoteId enables fast hover/feature-state)
+    map.addSource('tracts', {
+      type: 'vector',
+      url: TILESET_URL,
+      promoteId: UID_FIELD
+    });
 
-    // Fill layer (choropleth)
+    // Color expression on display scale
+    const FB_EXPR = DATA_IS_FRACTION
+      ? ['*', ['to-number', ['coalesce', ['get', VALUE_FIELD], 0]], 100]
+      : ['to-number', ['coalesce', ['get', VALUE_FIELD], 0]];
+
+    const colorExpr = [
+      'step', FB_EXPR,
+      COLORS[0],
+      BIN_BREAKS[0], COLORS[1],
+      BIN_BREAKS[1], COLORS[2],
+      BIN_BREAKS[2], COLORS[3],
+      BIN_BREAKS[3], COLORS[4]
+    ];
+
+    // Fill
     map.addLayer({
       id: 'tracts-fill',
       type: 'fill',
       source: 'tracts',
+      'source-layer': SOURCE_LAYER,
       paint: {
         'fill-color': colorExpr,
-        'fill-opacity': 0.82
+        'fill-opacity': 0.88
       }
     });
 
-    // Base outline
+    // Outline
     map.addLayer({
       id: 'tracts-outline',
       type: 'line',
       source: 'tracts',
+      'source-layer': SOURCE_LAYER,
       paint: {
         'line-color': '#ffffff',
-        'line-width': [
-          'interpolate', ['linear'], ['zoom'],
-          9, 0.2,
-          12, 0.6
-        ],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.2, 12, 0.6],
         'line-opacity': 0.8
       }
     });
 
-    // Hover outline
+    // Hover outline — filter by the single, consistent UID field
     map.addLayer({
       id: 'tracts-hover',
       type: 'line',
       source: 'tracts',
-      filter: ['==', ['get', '__uid'], ''],
+      'source-layer': SOURCE_LAYER,
+      filter: ['==', ['get', UID_FIELD], ''], // start empty
       paint: {
         'line-color': '#ffffff',
-        'line-width': [
-          'interpolate', ['linear'], ['zoom'],
-          9, 1.2,
-          12, 2.2
-        ],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.2, 12, 2.2],
         'line-opacity': 0.9
       }
     });
@@ -239,83 +172,51 @@ function buildLegend(el, breaks, colors, headingText = '') {
     // Hover behavior
     map.on('mousemove', 'tracts-fill', (e) => {
       if (!e.features?.length) return;
-      const uid = e.features[0].properties?.__uid || '';
-      map.setFilter('tracts-hover', ['==', ['get', '__uid'], uid]);
+      const uid = e.features[0].properties?.[UID_FIELD] ?? '';
+      map.setFilter('tracts-hover', ['==', ['get', UID_FIELD], uid]);
       map.getCanvas().style.cursor = 'pointer';
     });
     map.on('mouseleave', 'tracts-fill', () => {
-      if (!selectedUID) map.setFilter('tracts-hover', ['==', ['get', '__uid'], '']);
+      map.setFilter('tracts-hover', ['==', ['get', UID_FIELD], '']);
       map.getCanvas().style.cursor = '';
     });
 
-    // Click → open info card
+    // Click → info card
     map.on('click', 'tracts-fill', (e) => {
       if (!e.features?.length) return;
-      const f = e.features[0];
-      const props = f.properties || {};
-      selectedUID = props.__uid || '';
-      infoBox.innerHTML = tplInfo(props, displayMult);
-      map.setFilter('tracts-hover', ['==', ['get', '__uid'], selectedUID]);
+      const props = e.features[0].properties || {};
+      infoBox.innerHTML = tplInfo(props);
       showInfoBox();
-      map.getCanvas().style.cursor = 'pointer';
     });
 
-    // Click background → clear card
+    // Click background → clear
     map.on('click', (e) => {
       const hit = map.queryRenderedFeatures(e.point, { layers: ['tracts-fill'] });
-      if (!hit.length) clearSelection();
+      if (!hit.length) {
+        hideInfoBox();
+        map.setFilter('tracts-hover', ['==', ['get', UID_FIELD], '']);
+      }
     });
 
-    // ESC to clear
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') clearSelection(); });
-
-    // Keep labels above
+    // Labels above + hover on top
     try {
       if (map.getLayer('road-label-navigation')) map.moveLayer('road-label-navigation');
       if (map.getLayer('settlement-subdivision-label')) map.moveLayer('settlement-subdivision-label');
       map.moveLayer('tracts-hover');
     } catch {}
 
-    // Build legend now that breaks/colors are final
+    // Legend
     buildLegend(legendEl, BIN_BREAKS, COLORS);
 
-    // Pym height sync (robust)
-    (function robustPym() {
-      const sendBurst = (ms = 1800, every = 150) => {
-        const end = performance.now() + ms;
-        const tick = () => {
-          try { pymChild?.sendHeight(); } catch {}
-          if (performance.now() < end) setTimeout(tick, every);
-        };
-        requestAnimationFrame(tick);
-      };
-
-      Promise.all([
-        new Promise(r => map.once('idle', r)),
-        (document.fonts?.ready ?? Promise.resolve())
-      ]).then(() => {
-        requestAnimationFrame(() => {
-          try { pymChild?.sendHeight(); } catch {}
-          sendBurst();
-        });
-      });
-
-      let tId = null;
-      const throttled = () => {
-        if (tId) return;
-        tId = setTimeout(() => { tId = null; try { pymChild?.sendHeight(); } catch {} }, 100);
-      };
-
-      new ResizeObserver(throttled).observe(document.body);
-      const mo = new MutationObserver(throttled);
-      mo.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
-
-      window.addEventListener('orientationchange', () => {
-        setTimeout(() => { map.resize(); sendBurst(1000, 150); }, 200);
-      });
-    })();
+    // Pym sync (simple)
+    Promise.all([
+      new Promise(r => map.once('idle', r)),
+      (document.fonts?.ready ?? Promise.resolve())
+    ]).then(() => {
+      requestAnimationFrame(() => { try { pymChild?.sendHeight(); } catch {} });
+    });
   });
 
-  // Relayout on window resize
+  // Resize
   window.addEventListener('resize', () => map.resize());
 });
