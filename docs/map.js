@@ -487,7 +487,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const BIN_BREAKS = USE_FIXED_BINS ? FIXED_BREAKS : quantileBreaks;
 
   // Color ramp (light → dark). Adjust if you want different hues.
-  const COLORS = ['#f1eef6', '#bdc9e1', '#74a9cf', '#2b8cbe', '#045a8d'];
+  // const COLORS = ['#f1eef6', '#bdc9e1', '#74a9cf', '#2b8cbe', '#045a8d'];
+  // Color ramp (dark → light) derived from your image, with one added darker shade
+// Color ramp (light → dark)
+const COLORS = ['#fef8e8', '#f7eabc', '#efd57d', '#e7c04a', '#b99a3b'];
+
+
 
   // Expression helper to get the value on the same display scale used for breaks
   const FB_EXPR = dataIsFraction
