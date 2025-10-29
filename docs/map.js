@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---- Map
   const map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/mlnow/cm2tndow500co01pw3fho5d21',
+    style: 'mapbox://styles/mlnow/cmcl3p51v003g01sqav9fa920',
     center: [-122.4243266, 37.7247071],
     zoom: 9.5
   });
