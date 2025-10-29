@@ -105,8 +105,8 @@ body{margin:0;padding:0 0 2px 0;font-family:'Barlow',sans-serif}
 
 /* ===== Desktop: bump map width cap to 500px ===== */
 @media (min-width: 769px) {
-  .map-container { max-width: 500px; }
-  .map { max-width: 500px; }
+  .map-container { max-width: 600px; }
+  .map { max-width: 600px; }
 }
 
 /* ===== Info-box: uniform font size ===== */
